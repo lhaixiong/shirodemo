@@ -13,7 +13,14 @@
        -->
        <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
               <property name="cacheManager" ref="cacheManager"/>
-                <property name="realm" ref="jdbcRealm"/>
+                <!--<property name="realm" ref="jdbcRealm"/>-->
+                <!--<property name="authenticator" ref="authenticator"/>-->
+           <property name="realms">
+               <list>
+                   <ref bean="jdbcRealm"/>
+                   <ref bean="secondRealm"/>
+               </list>
+           </property>
        </bean>
 
        <!-- Let's use some enterprise caching support for better performance.  You can replace this with any enterprise
@@ -42,9 +49,34 @@
            3.1 直接配置实现了 org.apache.shiro.realm.Realm 接口的 bean
        -->
        <bean id="jdbcRealm" class="com.lhx.shirodemo.realm.ShiroRealm">
-
+            <property name="credentialsMatcher">
+                <bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+                    <property name="hashAlgorithmName" value="MD5"/>
+                    <property name="hashIterations" value="1024"/>
+                </bean>
+            </property>
        </bean>
 
+        <bean id="secondRealm" class="com.lhx.shirodemo.realm.SecondRealm">
+            <property name="credentialsMatcher">
+                <bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+                    <property name="hashAlgorithmName" value="SHA1"/>
+                    <property name="hashIterations" value="1024"/>
+                </bean>
+            </property>
+        </bean>
+
+        <bean id="authenticator" class="org.apache.shiro.authc.pam.ModularRealmAuthenticator">
+            <!--<property name="realms">-->
+                <!--<list>-->
+                    <!--<ref bean="jdbcRealm"/>-->
+                    <!--<ref bean="secondRealm"/>-->
+                <!--</list>-->
+            <!--</property>-->
+            <property name="authenticationStrategy">
+                <bean class="org.apache.shiro.authc.pam.AtLeastOneSuccessfulStrategy"/>
+            </property>
+        </bean>
 
        <!-- =========================================================
             Shiro Spring-specific integration
@@ -85,6 +117,9 @@
               <property name="loginUrl" value="/login.jsp"/>
               <property name="successUrl" value="/list.jsp"/>
               <property name="unauthorizedUrl" value="/unauthorized.jsp"/>
+
+
+              <property name="filterChainDefinitionMap" ref="filterChainDefinitionMap"/>
               <!--
                   配置哪些页面需要受保护.
                   以及访问这些页面需要的权限.
@@ -93,14 +128,24 @@
                   3). logout 登出.
                   4). roles 角色过滤器
               -->
-              <property name="filterChainDefinitions">
-                  <value>
-                      /login.jsp = anon
-                      # everything else requires authentication:
-                      /** = authc
-                  </value>
-              </property>
+              <!--<property name="filterChainDefinitions">-->
+                  <!--<value>-->
+                      <!--/login.jsp = anon-->
+                      <!--/shiro/login = anon-->
+                      <!--/shiro/logout =logout-->
+
+                      <!--/admin.jsp =roles[admin]-->
+                      <!--/user.jsp =roles[user]-->
+
+                      <!--# everything else requires authentication:-->
+                      <!--/** = authc-->
+                  <!--</value>-->
+              <!--</property>-->
        </bean>
 
+        <bean id="shiroService" class="com.lhx.shirodemo.service.ShiroService"/>
 
+       <!-- 配置一个 bean, 该 bean 实际上是一个 Map. 通过实例工厂方法的方式 -->
+        <bean id="filterChainDefinitionMap" factory-bean="filterChainDefinitionMapBuilder" factory-method="buildFilterChainDefinitionMap"/>
+        <bean id="filterChainDefinitionMapBuilder" class="com.lhx.shirodemo.factory.FilterChainDefinitionMapBuilder"/>
 </beans>
